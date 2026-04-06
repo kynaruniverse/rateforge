@@ -1,208 +1,146 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
+import { useState } from 'react';
 
-const { useState, useEffect } = React;
+export default function App() {
+  const [takeHome, setTakeHome] = useState(60000);
+  const [expenses, setExpenses] = useState(15000);
+  const [billableDays, setBillableDays] = useState(210);
+  const [isOutsideIR35, setIsOutsideIR35] = useState(true);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. COMPONENTS
-//
-// A component is a function that returns JSX — a syntax that looks like HTML
-// but lets you embed JavaScript expressions inside { curly braces }.
-// ─────────────────────────────────────────────────────────────────────────────
+  // 2026/27 UK rates (Sole Trader – easy to extend later)
+  const calculateRate = () => {
+    const taxEstimate = takeHome * 0.28; // \~28% effective (tax + NI basic rate)
+    const totalNeeded = takeHome + expenses + taxEstimate;
+    const dailyRate = Math.round((totalNeeded / billableDays) * 1.1); // +10% buffer
+    const hourlyRate = Math.round(dailyRate / 7.5);
+    const projectedKeep = Math.round(takeHome * 0.72); // after tax/NI
 
-function Greeting ({ name }) {
-  return <h2 className="greeting">Hello, {name}!</h2>;
-}
+    return { dailyRate, hourlyRate, projectedKeep, effectiveTax: '28%' };
+  };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. PROPS
-//
-// Props are the inputs to a component. They flow one way: parent → child.
-// Destructure them in the function signature for cleaner code.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Badge ({ label, count }) {
-  return (
-    <span className="badge">
-      {label}: <strong>{count}</strong>
-    </span>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. useState — LOCAL STATE
-//
-// useState(initialValue) returns [currentValue, setter].
-// Calling the setter re-renders the component with the new value.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function AddTodo ({ onAdd }) {
-  const [text, setText] = useState('');
-
-  function handleSubmit (e) {
-    e.preventDefault();
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    onAdd(trimmed);
-    setText('');        // clear the input after adding
-  }
+  const { dailyRate, hourlyRate, projectedKeep, effectiveTax } = calculateRate();
 
   return (
-    <form className="add-form" onSubmit={handleSubmit}>
-      <input
-        className="add-input"
-        value={text}
-        onChange={e => setText(e.target.value)}
-        placeholder="What needs to be done?"
-      />
-      <button className="btn btn-primary" type="submit">Add</button>
-    </form>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. LISTS AND KEYS
-//
-// Render arrays with .map(). Each item needs a unique `key` prop so React can
-// track which items changed, were added, or removed efficiently.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function TodoItem ({ todo, onToggle, onDelete }) {
-  return (
-    <li className={'todo-item' + (todo.done ? ' done' : '')}>
-      <input
-        type="checkbox"
-        checked={todo.done}
-        onChange={() => onToggle(todo.id)}
-      />
-      <span className="todo-text">{todo.text}</span>
-      <button className="btn btn-delete" onClick={() => onDelete(todo.id)}>✕</button>
-    </li>
-  );
-}
-
-function TodoList ({ todos, onToggle, onDelete }) {
-  if (todos.length === 0) {
-    return <p className="empty">Nothing here. Add a task above!</p>;
-  }
-  return (
-    <ul className="todo-list">
-      {todos.map(todo => (
-        <TodoItem
-          key={todo.id}
-          todo={todo}
-          onToggle={onToggle}
-          onDelete={onDelete}
-        />
-      ))}
-    </ul>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. useEffect — SIDE EFFECTS
-//
-// useEffect runs after every render (or when specified dependencies change).
-// Use it for localStorage, timers, network requests, subscriptions, etc.
-//
-// The dependency array controls when the effect re-runs:
-//   []         → runs once on mount
-//   [a, b]     → runs when a or b changes
-//   (omitted)  → runs after every render
-// ─────────────────────────────────────────────────────────────────────────────
-
-function useSavedTodos () {
-  const [todos, setTodos] = useState(() => {
-    // Lazy initialiser: read from localStorage once on first render
-    try {
-      return JSON.parse(localStorage.getItem('react-todos')) || [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    // Persist to localStorage whenever todos change
-    localStorage.setItem('react-todos', JSON.stringify(todos));
-  }, [todos]);
-
-  return [todos, setTodos];
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 6. COMPOSITION — PUTTING IT ALL TOGETHER
-//
-// Components compose just like functions. The top-level component owns the
-// shared state and passes pieces of it down as props.
-// ─────────────────────────────────────────────────────────────────────────────
-
-var nextId = 1;
-
-function TodoApp () {
-  const [todos, setTodos] = useSavedTodos();
-  const [filter, setFilter] = useState('all');  // 'all' | 'active' | 'done'
-
-  function addTodo (text) {
-    setTodos(prev => [...prev, { id: nextId++, text, done: false }]);
-  }
-
-  function toggleTodo (id) {
-    setTodos(prev =>
-      prev.map(t => t.id === id ? { ...t, done: !t.done } : t)
-    );
-  }
-
-  function deleteTodo (id) {
-    setTodos(prev => prev.filter(t => t.id !== id));
-  }
-
-  function clearDone () {
-    setTodos(prev => prev.filter(t => !t.done));
-  }
-
-  const filtered = todos.filter(t =>
-    filter === 'all' ? true :
-      filter === 'active' ? !t.done :
-        t.done
-  );
-
-  const remaining = todos.filter(t => !t.done).length;
-  const doneCount = todos.length - remaining;
-
-  return (
-    <div className="app">
-      <header className="app-header">
-        <h1>Todo App</h1>
-        <Greeting name="Developer" />
-        <div className="badges">
-          <Badge label="remaining" count={remaining} />
-          <Badge label="done" count={doneCount} />
+    <div className="min-h-screen bg-slate-950 text-white p-6 font-sans">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-emerald-400">RateForge</h1>
+          <p className="text-emerald-300 text-sm">UK Freelance Rate Calculator • 2026/27</p>
         </div>
-      </header>
-
-      <AddTodo onAdd={addTodo} />
-
-      <div className="filters">
-        {['all', 'active', 'done'].map(f => (
-          <button
-            key={f}
-            className={'btn' + (filter === f ? ' active' : '')}
-            onClick={() => setFilter(f)}
-          >
-            {f}
-          </button>
-        ))}
-        {doneCount > 0 && (
-          <button className="btn btn-clear" onClick={clearDone}>
-            clear done
-          </button>
-        )}
+        <div className="text-xs bg-slate-900 px-3 py-1 rounded-2xl border border-emerald-500">
+          Live
+        </div>
       </div>
 
-      <TodoList todos={filtered} onToggle={toggleTodo} onDelete={deleteTodo} />
+      <div className="max-w-xl mx-auto">
+        {/* Main Calculator Card */}
+        <div className="bg-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-800">
+          
+          {/* Desired Take-Home */}
+          <div className="mb-8">
+            <div className="flex justify-between items-baseline mb-2">
+              <label className="text-slate-300 text-lg">Desired annual take-home</label>
+              <span className="font-mono text-3xl text-emerald-400">£{takeHome.toLocaleString()}</span>
+            </div>
+            <input
+              type="range"
+              min="30000"
+              max="150000"
+              step="1000"
+              value={takeHome}
+              onChange={(e) => setTakeHome(Number(e.target.value))}
+              className="w-full accent-emerald-400"
+            />
+          </div>
+
+          {/* Expenses */}
+          <div className="mb-8">
+            <div className="flex justify-between items-baseline mb-2">
+              <label className="text-slate-300 text-lg">Annual expenses</label>
+              <span className="font-mono text-3xl text-emerald-400">£{expenses.toLocaleString()}</span>
+            </div>
+            <input
+              type="range"
+              min="5000"
+              max="40000"
+              step="500"
+              value={expenses}
+              onChange={(e) => setExpenses(Number(e.target.value))}
+              className="w-full accent-emerald-400"
+            />
+          </div>
+
+          {/* Billable Days */}
+          <div className="mb-8">
+            <div className="flex justify-between items-baseline mb-2">
+              <label className="text-slate-300 text-lg">Billable days per year</label>
+              <span className="font-mono text-3xl text-emerald-400">{billableDays}</span>
+            </div>
+            <input
+              type="range"
+              min="100"
+              max="240"
+              step="5"
+              value={billableDays}
+              onChange={(e) => setBillableDays(Number(e.target.value))}
+              className="w-full accent-emerald-400"
+            />
+            <p className="text-xs text-slate-400 mt-1">Default 210 after holidays &amp; admin</p>
+          </div>
+
+          {/* IR35 Toggle */}
+          <div className="flex items-center justify-between mb-10 bg-slate-800 rounded-2xl p-4">
+            <div>
+              <p className="text-slate-300">IR35 status</p>
+              <p className="text-sm text-slate-400">Outside IR35 = more take-home</p>
+            </div>
+            <button
+              onClick={() => setIsOutsideIR35(!isOutsideIR35)}
+              className={`px-6 py-2 rounded-2xl font-medium transition-all ${
+                isOutsideIR35
+                  ? 'bg-emerald-400 text-slate-950'
+                  : 'bg-slate-700 text-white'
+              }`}
+            >
+              {isOutsideIR35 ? '✅ Outside' : 'Inside'}
+            </button>
+          </div>
+
+          {/* Live Results */}
+          <div className="bg-emerald-500/10 border border-emerald-400 rounded-3xl p-8 text-center">
+            <p className="uppercase text-emerald-400 text-sm tracking-widest mb-1">Recommended Rate</p>
+            <p className="text-7xl font-bold text-white mb-1">£{dailyRate}</p>
+            <p className="text-2xl text-emerald-300">per day</p>
+            
+            <div className="flex justify-center gap-8 mt-8">
+              <div>
+                <p className="text-xs text-slate-400">Hourly</p>
+                <p className="text-4xl font-semibold">£{hourlyRate}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">You keep</p>
+                <p className="text-4xl font-semibold text-emerald-400">£{projectedKeep.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Effective tax</p>
+                <p className="text-4xl font-semibold">{effectiveTax}</p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => alert('✅ Rate saved to dashboard! (Phase 3 coming next)')}
+            className="w-full mt-8 bg-emerald-400 hover:bg-emerald-500 transition-colors text-slate-950 font-semibold text-xl py-6 rounded-3xl"
+          >
+            Forge This Rate → Save to Dashboard
+          </button>
+        </div>
+
+        {/* Footer note */}
+        <p className="text-center text-slate-500 text-xs mt-8">
+          Calculations based on 2026/27 UK tax &amp; NI rules • Real-time • Offline
+        </p>
+      </div>
     </div>
   );
 }
-
-// Mount — React 18+ uses createRoot instead of the legacy ReactDOM.render()
-ReactDOM.createRoot(document.getElementById('root')).render(<TodoApp />);

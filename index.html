@@ -1,14 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>React Todo</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/systemjs@0.21.6/dist/system.js"></script>
-</head>
-<body>
-  <div id="root"></div>
-  <script src="config.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RateForge • UK Freelance Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Tailwind config for dark fintech vibe
+      function initializeTailwind() {
+        return {
+          config(userConfig = {}) {
+            return {
+              content: ["./**/*.{html,js,ts,jsx,tsx}"],
+              theme: {
+                extend: {
+                  colors: {
+                    forge: "#10b981", // vibrant money green
+                  },
+                },
+              },
+              plugins: [],
+            }
+          },
+          theme: {
+            extend: {},
+          },
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-slate-950 text-white">
+    <div id="root"></div>
+  </body>
 </html>
